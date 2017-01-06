@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  {% for p in posts %}
+    {{ p.render() | safe }}
+    <br>
+    (
+    <a href="/blog/editpost?subject={{p.subject}}&content={{p.content}}">edit {{p.subject}}</a>
+    <a href="/deleteme">delete</a>
+    )
+    <br>
+  {% endfor %}
+
+{% endblock %}
