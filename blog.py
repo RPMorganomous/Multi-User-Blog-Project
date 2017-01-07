@@ -170,23 +170,44 @@ class NewPost(BlogHandler):
             self.render("newpost.html", subject=subject, content=content, error=error)
 
 class EditPost(BlogHandler):
-    def get(self):
+    def get(self, post_id):
     
-        subject = self.request.get('subject')
-        content = self.request.get('content')
+      print post_id
+      self.write (post_id)
+      
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+      
+      self.render("editme.html", p=post)
+        
+        # subject = self.request.get('subject')
+        # content = self.request.get('content')
     
-        if self.user:
-            self.render("newpost.html", subject=subject, content=content)
-        else:
-            self.redirect("/login")
+        # if self.user:
+            # self.render("newpost.html", subject=subject, content=content)
+        # else:
+            # self.redirect("/login")
 
-    def post(self):
+    def post(self, post_id):
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+      
+      
         # if not self.user:
             # self.redirect('/blog')
 
       subject = self.request.get("subject")
       content = self.request.get("content")
-
+      
+      post.subject = subject
+      post.content = content
+      
+      post.put()
+      
+      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
+      
+      ##print subject
+      ##print ("inside the post method or something")
         # if subject and content:
             # p = Post(parent = blog_key(), subject = subject, content = content)
             # p.put()
@@ -195,8 +216,8 @@ class EditPost(BlogHandler):
             # error = "subject and content, please!"
             # self.render("newpost.html", subject=subject, content=content, error=error)
             
-      #self.write('Hello, Udacity!' + self.subject + self.content)
-      self.render('welcome.html', username = subject)
+      ##self.write('Hello, Udacity!' + subject + content)
+      #self.render('welcome.html', username = subject)
 
 
 ###### Unit 2 HW's
@@ -332,7 +353,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/?', BlogFront),
                                ('/blog/([0-9]+)', PostPage),
                                ('/blog/newpost', NewPost),
-                               ('/blog/editpost', EditPost),
+                               ('/blog/editpost/([0-9]+)', EditPost),
                                ('/signup', Register),
                                ('/login', Login),
                                ('/logout', Logout),

@@ -1,18 +1,21 @@
-<!DOCTYPE html>
+{% extends "base.html" %}
 
-<html>
-  <head>
-    <title>EditMe</title>
-  </head>
+{% block content %}
+  <h2>EDIT post</h2>
 
-  <body>
-    <h2>Here I am:</h2>
     <form method="post">
-      <textarea name="text"
-                style="height: 100px; width: 400px;">{{text}}</textarea>
-      <br>
+      <label>
+        <div>subject</div>
+        <input type="text" name="subject" value="{{p.subject}}">
+      </label>
+
+      <label>
+        <div>blog</div>
+        <textarea name="content">{{p.content}}</textarea>
+      </label>
+
+      <div class="error">{{error}}</div>
+
       <input type="submit">
     </form>
-  </body>
-
-</html>
+{% endblock %}

@@ -6,7 +6,7 @@
     {{ p.render() | safe }}
     <br>
     (
-    <a href="/blog/editpost?subject={{p.subject}}&content={{p.content}}">edit {{p.subject}}</a>
+    <a href="/blog/editpost/{{p.key().id()}}">edit {{p.subject}}</a>
     <a href="/deleteme">delete</a>
     )
     <br>
