@@ -199,6 +199,18 @@ class UnlikePost(BlogHandler):
       
       self.render("permalink.html", post = post)
       
+    def post(self, post_id): #this is for the comment post from permalink
+      comment = self.request.get('comment') + " - user: " + self.user.name
+
+      
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+      
+      post.comments.append(comment)
+      post.put()
+      
+      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
+      
 class LikePost(BlogHandler):
     def get(self, post_id):
       key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -213,6 +225,18 @@ class LikePost(BlogHandler):
       #self.redirect('/blog/%s' % str(post.key().id()))
       
       self.render("permalink.html", post = post)
+      
+    def post(self, post_id): #this is for the comment post from permalink
+      comment = self.request.get('comment') + " - user: " + self.user.name
+
+      
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+      
+      post.comments.append(comment)
+      post.put()
+      
+      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
         
 class NewPost(BlogHandler):
     def get(self):
