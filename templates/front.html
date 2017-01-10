@@ -4,12 +4,18 @@
 
   {% for p in posts %}
     {{ p.render() | safe }}
-    <br>
-    (
-    <a href="/blog/editpost/{{p.key().id()}}">edit {{p.subject}}</a>
-    <a href="/deleteme">delete</a>
-    )
-    <br>
+    <!-- <br> -->
+    <!-- ( -->
+    <!-- <a href="/blog/editpost/{{p.key().id()}}">edit {{p.subject}}</a> -->
+    <!-- <a href="/blog/deleteme/{{p.key().id()}}">delete</a> -->
+    <!-- ) -->
+    <!-- <br> -->
+
   {% endfor %}
+    <br>
+    <form method="post">
+      <input type="submit" value="Add A Post">
+    </form>
+    <br>
 
 {% endblock %}

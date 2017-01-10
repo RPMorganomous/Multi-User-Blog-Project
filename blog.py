@@ -8,13 +8,16 @@ from string import letters
 import webapp2
 import jinja2
 
+import time
+
+
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
-secret = 'fart'
+secret = 'flatulance'
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -60,9 +63,9 @@ class BlogHandler(webapp2.RequestHandler):
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User.by_id(int(uid))
 
-def render_post(response, post):
-    response.out.write('<b>' + post.subject + '</b><br>')
-    response.out.write(post.content)
+    def render_post(response, post):
+        response.out.write('<b>' + post.subject + '</b>hereiam<br>')
+        response.out.write(post.content)
 
 class MainPage(BlogHandler):
   def get(self):
@@ -125,16 +128,39 @@ class Post(db.Model):
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
+    author = db.StringProperty()
+    liked = db.StringProperty()
+    likedby = db.StringListProperty()
+    comments = db.StringListProperty()
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
-        return render_str("post.html", p = self)
+        return render_str("post.html", p = self) #makes it easy to fill in call from front.html
 
+class DeleteMe(BlogHandler):
+    def get(self, post_id):
+        
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        
+        post.delete()
+
+        
+        time.sleep(2)
+        
+        #posts = db.GqlQuery("select * from Post order by created desc limit 10") 
+        posts = Post.all().order('-created')
+        #self.render('front.html', posts = posts)
+        self.redirect('/blog')
+        
 class BlogFront(BlogHandler):
     def get(self):
         posts = db.GqlQuery("select * from Post order by created desc limit 10") 
-        #Post.all().order('-created')
+        #posts = Post.all().order('-created')
         self.render('front.html', posts = posts)
+        
+    def post(self):
+        self.redirect('/blog/newpost')
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -146,7 +172,48 @@ class PostPage(BlogHandler):
             return
 
         self.render("permalink.html", post = post)
+        
 
+        #self.render('welcome.html')
+      
+    def post(self, post_id): #this is for the comment post from permalink
+      comment = self.request.get('comment') + " - user: " + self.user.name
+
+      
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+      
+      post.comments.append(comment)
+      post.put()
+      
+      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
+    
+class UnlikePost(BlogHandler):
+    def get(self, post_id):
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+
+      #post.liked = ("")
+      post.likedby.remove(self.user.name)
+      post.put()
+      
+      self.render("permalink.html", post = post)
+      
+class LikePost(BlogHandler):
+    def get(self, post_id):
+      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+      post = db.get(key)
+
+      #post.liked = "liked"
+      post.likedby.append(self.user.name)
+      post.put()
+      
+      #post.put()
+      
+      #self.redirect('/blog/%s' % str(post.key().id()))
+      
+      self.render("permalink.html", post = post)
+        
 class NewPost(BlogHandler):
     def get(self):
         if self.user:
@@ -160,9 +227,10 @@ class NewPost(BlogHandler):
 
         subject = self.request.get('subject')
         content = self.request.get('content')
+        user = self.user.name #how to get user name here? - holy crap, i can't believe that worked!
 
         if subject and content:
-            p = Post(parent = blog_key(), subject = subject, content = content)
+            p = Post(parent = blog_key(), subject = subject, content = content, author = user)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id())) #to permalink
         else:
@@ -172,11 +240,12 @@ class NewPost(BlogHandler):
 class EditPost(BlogHandler):
     def get(self, post_id):
     
-      print post_id
-      self.write (post_id)
+      ##print post_id
+      ##self.write (post_id)
       
       key = db.Key.from_path('Post', int(post_id), parent=blog_key())
       post = db.get(key)
+      
       
       self.render("editme.html", p=post)
         
@@ -322,14 +391,7 @@ class Logout(BlogHandler):
         self.logout()
         self.redirect('/blog')
 
-class EditMe(BlogHandler):
-  def get(self):
-    #self.render('editme.html', text = "zippy do da")
-    self.render("newpost.html")
-    
-class DeleteMe(BlogHandler):
-  def get(self):
-    self.render('deleteme.html')
+
 
 class Unit3Welcome(BlogHandler):
     def get(self):
@@ -354,11 +416,12 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/([0-9]+)', PostPage),
                                ('/blog/newpost', NewPost),
                                ('/blog/editpost/([0-9]+)', EditPost),
+                               ('/blog/unlike_post/([0-9]+)', UnlikePost),
+                               ('/blog/like_post/([0-9]+)', LikePost),
                                ('/signup', Register),
                                ('/login', Login),
                                ('/logout', Logout),
                                ('/unit3/welcome', Unit3Welcome),
-                               ('/editme',EditMe),
-                               ('/deleteme', DeleteMe)
+                               ('/blog/deleteme/([0-9]+)', DeleteMe)
                                ],
                               debug=True)
