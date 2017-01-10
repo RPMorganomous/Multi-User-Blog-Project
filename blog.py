@@ -129,7 +129,7 @@ class Post(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
     author = db.StringProperty()
-    liked = db.StringProperty()
+    #liked = db.StringProperty()
     likedby = db.StringListProperty()
     comments = db.StringListProperty()
 
@@ -140,23 +140,24 @@ class Post(db.Model):
 class DeleteMe(BlogHandler):
     def get(self, post_id):
         
+      if not self.user:
+        self.redirect('/blog')
+        
+      else:
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
         
         post.delete()
-
-        
         time.sleep(2)
         
-        #posts = db.GqlQuery("select * from Post order by created desc limit 10") 
+        #posts = db.GqlQuery("select * from Post order by created desc limit 10") - old school way
         posts = Post.all().order('-created')
-        #self.render('front.html', posts = posts)
         self.redirect('/blog')
         
 class BlogFront(BlogHandler):
     def get(self):
         posts = db.GqlQuery("select * from Post order by created desc limit 10") 
-        #posts = Post.all().order('-created')
+        #posts = Post.all().order('-created') - new school way
         self.render('front.html', posts = posts)
         
     def post(self):
@@ -172,9 +173,6 @@ class PostPage(BlogHandler):
             return
 
         self.render("permalink.html", post = post)
-        
-
-        #self.render('welcome.html')
       
     def post(self, post_id): #this is for the comment post from permalink
       comment = self.request.get('comment') + " - user: " + self.user.name
@@ -190,14 +188,18 @@ class PostPage(BlogHandler):
     
 class UnlikePost(BlogHandler):
     def get(self, post_id):
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
+      if not self.user:
+        self.redirect('/blog')    
 
-      #post.liked = ("")
-      post.likedby.remove(self.user.name)
-      post.put()
+      else:
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        #post.liked = ("")
+        post.likedby.remove(self.user.name)
+        post.put()
       
-      self.render("permalink.html", post = post)
+        self.render("permalink.html", post = post)
       
     def post(self, post_id): #this is for the comment post from permalink
       comment = self.request.get('comment') + " - user: " + self.user.name
@@ -213,18 +215,18 @@ class UnlikePost(BlogHandler):
       
 class LikePost(BlogHandler):
     def get(self, post_id):
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
+      if not self.user:
+        self.redirect('/blog')
+      
+      else:
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
 
-      #post.liked = "liked"
-      post.likedby.append(self.user.name)
-      post.put()
+        #post.liked = "liked"
+        post.likedby.append(self.user.name)
+        post.put()
       
-      #post.put()
-      
-      #self.redirect('/blog/%s' % str(post.key().id()))
-      
-      self.render("permalink.html", post = post)
+        self.render("permalink.html", post = post)
       
     def post(self, post_id): #this is for the comment post from permalink
       comment = self.request.get('comment') + " - user: " + self.user.name
@@ -243,7 +245,7 @@ class NewPost(BlogHandler):
         if self.user:
             self.render("newpost.html")
         else:
-            self.redirect("/login")
+            self.redirect('/blog')
 
     def post(self):
         if not self.user:
@@ -263,31 +265,21 @@ class NewPost(BlogHandler):
 
 class EditPost(BlogHandler):
     def get(self, post_id):
-    
-      ##print post_id
-      ##self.write (post_id)
-      
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
-      
-      
-      self.render("editme.html", p=post)
+      if not self.user:
+        self.redirect('/blog')
         
-        # subject = self.request.get('subject')
-        # content = self.request.get('content')
-    
-        # if self.user:
-            # self.render("newpost.html", subject=subject, content=content)
-        # else:
-            # self.redirect("/login")
+      else:
+        #print post_id
+        #self.write (post_id)
+      
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+          
+        self.render("editme.html", p=post)
 
     def post(self, post_id):
       key = db.Key.from_path('Post', int(post_id), parent=blog_key())
       post = db.get(key)
-      
-      
-        # if not self.user:
-            # self.redirect('/blog')
 
       subject = self.request.get("subject")
       content = self.request.get("content")
@@ -298,20 +290,6 @@ class EditPost(BlogHandler):
       post.put()
       
       self.redirect('/blog/%s' % str(post.key().id())) #to permalink
-      
-      ##print subject
-      ##print ("inside the post method or something")
-        # if subject and content:
-            # p = Post(parent = blog_key(), subject = subject, content = content)
-            # p.put()
-            # self.redirect('/blog/%s' % str(p.key().id()))
-        # else:
-            # error = "subject and content, please!"
-            # self.render("newpost.html", subject=subject, content=content, error=error)
-            
-      ##self.write('Hello, Udacity!' + subject + content)
-      #self.render('welcome.html', username = subject)
-
 
 ###### Unit 2 HW's
 class Rot13(BlogHandler):
@@ -414,8 +392,6 @@ class Logout(BlogHandler):
     def get(self):
         self.logout()
         self.redirect('/blog')
-
-
 
 class Unit3Welcome(BlogHandler):
     def get(self):

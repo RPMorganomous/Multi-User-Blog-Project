@@ -12,10 +12,13 @@
     <!-- <br> -->
 
   {% endfor %}
+    
+    {% if user %}
     <br>
     <form method="post">
       <input type="submit" value="Add A Post">
     </form>
     <br>
+    {% endif %}
 
 {% endblock %}

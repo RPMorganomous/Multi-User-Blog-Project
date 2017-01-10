@@ -3,13 +3,32 @@
 <head>
   <link type="text/css" rel="stylesheet" href="/static/main.css" />
 
-  <title>World Of Wonders</title>
+  <title>Rick's Blog</title>
 </head>
 
 <body>
-  <a href="/blog" class="main-title">
-    World Of Wonders
-  </a>
+  
+    <!-- Page Header -->
+    <!-- Set your background image for this header on the line below. -->
+    <header class="intro-header" style="background-image: url('/static/home-bg.jpg')">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <div class="site-heading">
+                      <a href="/blog" class="main-title" style="color: white">
+                        <h1>Rick's Blog</h1>
+                      </a>
+                        <hr class="small">
+                        <span class="subheading">Stuff Rick finds interesting...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>  
+  
+  <!-- <a href="/blog" class="main-title"> -->
+    <!-- Clean Blog -->
+  <!-- </a> -->
 
   <div class="login-area">
     {% if user %}
