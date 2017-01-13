@@ -1,4 +1,4 @@
-application: multi-user-blog-project
+application: basicblog-153422
 version: 1
 runtime: python27
 api_version: 1

@@ -4,12 +4,7 @@
 
   {% for p in posts %}
     {{ p.render() | safe }}
-    <!-- <br> -->
-    <!-- ( -->
-    <!-- <a href="/blog/editpost/{{p.key().id()}}">edit {{p.subject}}</a> -->
-    <!-- <a href="/blog/deleteme/{{p.key().id()}}">delete</a> -->
-    <!-- ) -->
-    <!-- <br> -->
+
 
   {% endfor %}
     

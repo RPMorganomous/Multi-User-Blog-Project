@@ -3,15 +3,14 @@ import re
 import random
 import hashlib
 import hmac
-from string import letters
-
 import webapp2
 import jinja2
-
 import time
 
+from string import letters
+from models import Comment
+from google.appengine.ext import ndb
 
-from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
@@ -53,7 +52,7 @@ class BlogHandler(webapp2.RequestHandler):
         return cookie_val and check_secure_val(cookie_val)
 
     def login(self, user):
-        self.set_secure_cookie('user_id', str(user.key().id()))
+        self.set_secure_cookie('user_id', str(user.key.id()))
 
     def logout(self):
         self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
@@ -63,16 +62,13 @@ class BlogHandler(webapp2.RequestHandler):
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User.by_id(int(uid))
 
-    def render_post(response, post):
-        response.out.write('<b>' + post.subject + '</b>hereiam<br>')
-        response.out.write(post.content)
-
 class MainPage(BlogHandler):
   def get(self):
       self.write('Hello, Udacity!')
 
-
 ##### user stuff
+
+
 def make_salt(length = 5):
     return ''.join(random.choice(letters) for x in xrange(length))
 
@@ -87,22 +83,22 @@ def valid_pw(name, password, h):
     return h == make_pw_hash(name, password, salt)
 
 def users_key(group = 'default'):
-    return db.Key.from_path('users', group)
+    return ndb.Key('users', group)
 
-class User(db.Model):
-    name = db.StringProperty(required = True)
-    pw_hash = db.StringProperty(required = True)
-    email = db.StringProperty()
-
+class User(ndb.Model):
+    name = ndb.StringProperty(required = True)
+    pw_hash = ndb.StringProperty(required = True)
+    email = ndb.StringProperty()
+ 
     @classmethod
     def by_id(cls, uid):
         return User.get_by_id(uid, parent = users_key())
-
+ 
     @classmethod
     def by_name(cls, name):
-        u = User.all().filter('name =', name).get()
+        u = User.query().filter(User.name == name).get() #why .get?
         return u
-
+ 
     @classmethod
     def register(cls, name, pw, email = None):
         pw_hash = make_pw_hash(name, pw)
@@ -110,33 +106,58 @@ class User(db.Model):
                     name = name,
                     pw_hash = pw_hash,
                     email = email)
-
+ 
     @classmethod
     def login(cls, name, pw):
         u = cls.by_name(name)
         if u and valid_pw(name, pw, u.pw_hash):
             return u
 
-
 ##### blog stuff
 
 def blog_key(name = 'default'):
-    return db.Key.from_path('blogs', name)
+    return ndb.Key('blogs', name)
 
-class Post(db.Model):
-    subject = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-    author = db.StringProperty()
+class Post(ndb.Model):
+    subject = ndb.StringProperty(required = True)
+    content = ndb.TextProperty(required = True)
+    created = ndb.DateTimeProperty(auto_now_add = True)
+    last_modified = ndb.DateTimeProperty(auto_now = True)
+    author = ndb.StringProperty()
+    likedby = ndb.KeyProperty(repeated=True)
     #liked = db.StringProperty()
-    likedby = db.StringListProperty()
-    comments = db.StringListProperty()
+    #likedby = ndb.StringListProperty()
+    #comments = db.StringListProperty()
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         return render_str("post.html", p = self) #makes it easy to fill in call from front.html
 
+    @property    #used to compute a variable
+    def comments(self):
+        print "inside comments"
+        print Comment.query().filter(Comment.post == self.key)
+        return Comment.query().filter(Comment.post == self.key)
+        
+    @property
+    def num_comments(self):
+        return Comment.query().filter(Comment.post == self.get()).size()
+    
+    @property #access num_likes as if it is a variable
+    def num_likes(self):
+        return len(self.likedby)
+        
+    @classmethod
+    def get_by_id(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        return post
+        
+# class Comment(ndb.Model):
+#     comment = ndb.StringProperty(required = True)
+#     post = ndb.KeyProperty() #points to data in another entity
+#     user = ndb.KeyProperty()
+    
 class DeleteMe(BlogHandler):
     def get(self, post_id):
         
@@ -144,20 +165,17 @@ class DeleteMe(BlogHandler):
         self.redirect('/blog')
         
       else:
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-        
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+
         post.delete()
-        time.sleep(2)
-        
-        #posts = db.GqlQuery("select * from Post order by created desc limit 10") - old school way
-        posts = Post.all().order('-created')
+        time.sleep(2) 
+
         self.redirect('/blog')
         
 class BlogFront(BlogHandler):
     def get(self):
-        posts = db.GqlQuery("select * from Post order by created desc limit 10") 
-        #posts = Post.all().order('-created') - new school way
+        posts = Post.query().order(-Post.created) #- new school way
         self.render('front.html', posts = posts)
         
     def post(self):
@@ -165,9 +183,8 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-
+        post = Post.get_by_id(post_id)
+    
         if not post:
             self.error(404)
             return
@@ -178,67 +195,55 @@ class PostPage(BlogHandler):
       comment = self.request.get('comment') + " - user: " + self.user.name
 
       
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
+      key = ndb.Key('Post', int(post_id), parent=blog_key())
+      post = key.get()
       
-      post.comments.append(comment)
-      post.put()
+      comment = Comment(comment=comment, post=post.key, user=self.user.key)
+      comment.put()
       
-      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
-    
+      
+      self.redirect('/blog/%s' % str(post.key.id())) #to permalink
+
 class UnlikePost(BlogHandler):
     def get(self, post_id):
       if not self.user:
         self.redirect('/blog')    
 
       else:
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
 
-        #post.liked = ("")
-        post.likedby.remove(self.user.name)
+        post.likedby.remove(self.user.key)
         post.put()
       
-        self.render("permalink.html", post = post)
-      
+        self.redirect('/blog/%s' % str(post.key.id()))
+    
+#put comment functionality into it's own handler    
     def post(self, post_id): #this is for the comment post from permalink
       comment = self.request.get('comment') + " - user: " + self.user.name
 
-      
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
+      key = ndb.Key('Post', int(post_id), parent=blog_key())
+      post = key.get()
       
       post.comments.append(comment)
       post.put()
       
-      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
+      self.redirect('/blog/%s' % str(post.key.id())) #to permalink
       
-class LikePost(BlogHandler):
+class LikePost(BlogHandler): #add number of likes
     def get(self, post_id):
-      if not self.user:
-        self.redirect('/blog')
-      
-      else:
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-
-        #post.liked = "liked"
-        post.likedby.append(self.user.name)
-        post.put()
-      
-        self.render("permalink.html", post = post)
-      
-    def post(self, post_id): #this is for the comment post from permalink
-      comment = self.request.get('comment') + " - user: " + self.user.name
-
-      
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
-      
-      post.comments.append(comment)
-      post.put()
-      
-      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
+        print ("inside get")
+        if not self.user:
+            self.redirect('/blog')
+          
+        else:
+            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            post = key.get()
+    
+            post.likedby.append(self.user.key)
+            post.put()
+          
+            self.redirect('/blog/%s' % str(post.key.id()))
         
 class NewPost(BlogHandler):
     def get(self):
@@ -249,16 +254,16 @@ class NewPost(BlogHandler):
 
     def post(self):
         if not self.user:
-            self.redirect('/blog')
+            return self.redirect('/blog')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
-        user = self.user.name #how to get user name here? - holy crap, i can't believe that worked!
+        user = self.user.name 
 
         if subject and content:
             p = Post(parent = blog_key(), subject = subject, content = content, author = user)
             p.put()
-            self.redirect('/blog/%s' % str(p.key().id())) #to permalink
+            self.redirect('/blog/%s' % str(p.key.id())) #to permalink
         else:
             error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
@@ -269,17 +274,15 @@ class EditPost(BlogHandler):
         self.redirect('/blog')
         
       else:
-        #print post_id
-        #self.write (post_id)
-      
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-          
-        self.render("editme.html", p=post)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        
+        if self.user.name == post.author:  #follow with else etc. add to post also
+          self.render("editme.html", p=post)
 
     def post(self, post_id):
-      key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-      post = db.get(key)
+      key = ndb.Key('Post', int(post_id), parent=blog_key())
+      post = key.get()
 
       subject = self.request.get("subject")
       content = self.request.get("content")
@@ -289,7 +292,7 @@ class EditPost(BlogHandler):
       
       post.put()
       
-      self.redirect('/blog/%s' % str(post.key().id())) #to permalink
+      self.redirect('/blog/%s' % str(post.key.id())) #to permalink
 
 ###### Unit 2 HW's
 class Rot13(BlogHandler):

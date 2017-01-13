@@ -7,40 +7,35 @@
   {% if user.name == post.author %}
   
     <br>
-    <a href="/blog/editpost/{{post.key().id()}}">edit</a>
-    <a href="/blog/deleteme/{{post.key().id()}}">delete</a>
+    <a href="/blog/editpost/{{post.key.id()}}">edit</a>
+    <a href="/blog/deleteme/{{post.key.id()}}">delete</a>
 
     <br>
     
-    <h3>Comments:</h3>
-      {% for x in post.comments %}
-      <br>
-      {{ x }}
-      <br>
-      {% endfor %}
+
     
     {% else %}
     <!-- like or unlike here = call blog and set liked or unliked then reload this page-->
     <br>
+	{{ post.num_likes }}
     {% if user.name in post.likedby %}
     
-        <a color="red" href="/blog/unlike_post/{{post.key().id()}}">Unlike This Post</a>
+        <a color="red" href="/blog/unlike_post/{{post.key.id()}}">Unlike This Post</a>
     
       {% elif user %}
     
-        <a color="green" href="/blog/like_post/{{post.key().id()}}">Like This Post</a>    
+        <a color="green" href="/blog/like_post/{{post.key.id()}}">Like This Post</a>    
         
     {% endif %}
       <p>
+
+      
+
+      
+  {% endif %}
+    
       <b>Comments:</b>
-      
-      {% for x in post.comments %}
-      <br>
-      {{ x }}
-      <br>
-      
-      {% endfor %}
-      
+
       {% if user %}
       </p>
       <form method="post">
@@ -49,8 +44,12 @@
       </form>
       {% endif %}
       
-  {% endif %}
-    
-
+      {% for x in post.comments %} <!-- returns objects -->
+      <br>
+      {{ x.comment }}
+      {{ x.user.name }}  <!-- add links for edit/delete if belong to user -->
+      <br>
+      
+      {% endfor %}
     
 {% endblock %}
