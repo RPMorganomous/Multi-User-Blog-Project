@@ -5,5 +5,3 @@ class Comment(ndb.Model):
     post = ndb.KeyProperty() #points to data in another entity
     user = ndb.KeyProperty()
     
-
-    
