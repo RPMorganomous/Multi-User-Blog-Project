@@ -1,1 +1,21 @@
-<h1> delete me </h1>
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>DELETE post</h2>
+
+    <form method="post">
+      <label>
+        <div>subject</div>
+        {{p.subject}}
+      </label>
+
+      <label>
+        <div>blog</div>
+        <textarea name="content">{{p.content}}</textarea>
+      </label>
+
+      <div class="error">{{error}}</div>
+
+      <input type="submit">
+    </form>
+{% endblock %}

@@ -68,7 +68,6 @@ class MainPage(BlogHandler):
 
 ##### user stuff
 
-
 def make_salt(length = 5):
     return ''.join(random.choice(letters) for x in xrange(length))
 
@@ -115,6 +114,8 @@ class User(ndb.Model):
 
 ##### blog stuff
 
+PARENT_KEY = ndb.Key("blogs", "default")
+
 def blog_key(name = 'default'):
     return ndb.Key('blogs', name)
 
@@ -125,9 +126,6 @@ class Post(ndb.Model):
     last_modified = ndb.DateTimeProperty(auto_now = True)
     author = ndb.StringProperty()
     likedby = ndb.KeyProperty(repeated=True)
-    #liked = db.StringProperty()
-    #likedby = ndb.StringListProperty()
-    #comments = db.StringListProperty()
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
@@ -153,26 +151,11 @@ class Post(ndb.Model):
         post = key.get()
         return post
         
-# class Comment(ndb.Model):
+# class Comment(ndb.Model): - moved to models.py
 #     comment = ndb.StringProperty(required = True)
 #     post = ndb.KeyProperty() #points to data in another entity
 #     user = ndb.KeyProperty()
     
-class DeleteMe(BlogHandler):
-    def get(self, post_id):
-        
-        if not self.user:
-            self.redirect('/blog')
-        
-        else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
-            post = key.get()
-
-            post.delete()
-            time.sleep(2) 
-
-            self.redirect('/blog')
-        
 class BlogFront(BlogHandler):
     def get(self):
         posts = Post.query().order(-Post.created) #- new school way
@@ -183,26 +166,30 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
     def get(self, post_id):
-        post = Post.get_by_id(post_id)
-    
+        post = Post.get_by_id(post_id) # ??? how to order comments
+        #comment_query = Comment.query().order(-Comment.last_touch_date_time)
+        
         if not post:
             self.error(404)
             return
 
         self.render("permalink.html", post = post)
       
-    def post(self, post_id): #this is for the comment post from permalink
-        comment = self.request.get('comment') + " - user: " + self.user.name
+    def post(self, post_id): #this adds a comment from leave a comment to the comment model
+        
+        #get the comment from the form
+        comment = self.request.get('comment') #+ " - user: " + self.user.name
 
-      
+        #get the post key for the blog post
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
         
-        comment = Comment(comment=comment, post=post.key, user=self.user.key)
+        #create an instance of Comment class and then add that to the model
+        comment = Comment(comment=comment, post=post.key, user=self.user.key) # ??? why/how does self.user.key work
         comment.put()
         
         
-        self.redirect('/blog/%s' % str(post.key.id())) #to permalink
+        self.redirect('/blog/%s' % str(post.key.id())) # back to permalink
 
 class UnlikePost(BlogHandler):
     def get(self, post_id):
@@ -294,6 +281,20 @@ class EditPost(BlogHandler):
         
         self.redirect('/blog/%s' % str(post.key.id())) #to permalink
 
+class DeleteMe(BlogHandler):
+    def get(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+
+        self.render("deleteme.html", p=post)
+
+    def post(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        post.delete()
+        #time.sleep(2)
+        self.redirect('/blog')
+        
 ###### Unit 2 HW's
 class Rot13(BlogHandler):
     def get(self):

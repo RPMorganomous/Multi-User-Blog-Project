@@ -46,8 +46,10 @@
       
       {% for x in post.comments %} <!-- returns objects -->
       <br>
-      {{ x.comment }}
-      {{ x.user.name }}  <!-- add links for edit/delete if belong to user -->
+      {{ x.comment }} - USER: 
+      {{ x.user }}  <!-- ??? how to return name instead of key -->
+      
+      <!-- add links for edit/delete if belong to user -->
       <br> <!-- query comment model for all comments where user is x -->
       
       {% endfor %}
