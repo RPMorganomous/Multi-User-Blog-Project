@@ -5,17 +5,17 @@
 
     <form method="post">
       <label>
-        <div>subject</div>
+        <div>subject:</div>
         {{p.subject}}
       </label>
 
       <label>
-        <div>blog</div>
-        <textarea name="content">{{p.content}}</textarea>
+        <div>blog:</div>
+        {{p.content}}
       </label>
 
       <div class="error">{{error}}</div>
 
-      <input type="submit">
+      <input type="submit" value="delete">
     </form>
 {% endblock %}

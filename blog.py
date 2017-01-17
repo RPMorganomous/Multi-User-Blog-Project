@@ -167,13 +167,14 @@ class BlogFront(BlogHandler):
 class PostPage(BlogHandler):
     def get(self, post_id):
         post = Post.get_by_id(post_id) # ??? how to order comments
-        #comment_query = Comment.query().order(-Comment.last_touch_date_time)
+        #comment_query = Comment.all().order(-Comment.last_touch_date_time)
+        comment_query = Comment.query(Comment.post == post.key).order(-Comment.last_touch_date_time)
         
         if not post:
             self.error(404)
             return
 
-        self.render("permalink.html", post = post)
+        self.render("permalink.html", post = post, comments = comment_query)
       
     def post(self, post_id): #this adds a comment from leave a comment to the comment model
         
@@ -291,7 +292,7 @@ class DeleteMe(BlogHandler):
     def post(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
-        post.delete()
+        key.delete()
         #time.sleep(2)
         self.redirect('/blog')
         
