@@ -12,19 +12,21 @@
 
     <br>
     
-
-    
     {% else %}
     <!-- like or unlike here = call blog and set liked or unliked then reload this page-->
     <br>
-	{{ post.num_likes }}
-    {% if user.name in post.likedby %}
+
+    {% if user.key in post.likedby %} <!-- ??? better way to do this -->
     
-        <a color="red" href="/blog/unlike_post/{{post.key.id()}}">Unlike This Post</a>
+    <form action="/blog/unlike_post/{{post.key.id()}}" method="post">
+    	<input type="submit" value="UNLIKE">
+    </form>
     
       {% elif user %}
     
-        <a color="green" href="/blog/like_post/{{post.key.id()}}">Like This Post</a>    
+    <form action="/blog/like_post/{{post.key.id()}}" method="post">
+    	<input type="submit" value="LIKE">
+    </form>  
         
     {% endif %}
       <p>
@@ -33,7 +35,8 @@
 
       
   {% endif %}
-    
+	{{ post.num_likes }}  Likes
+	<br>  
       <b>Comments:</b>
 
       {% if user %}
@@ -44,7 +47,7 @@
       </form>
       {% endif %}
       
-      {% for x in post.comments %} <!-- returns objects -->
+      {% for x in post.comments_query %} <!-- returns objects -->
       <br>
       {{ x.comment }} - USER: 
       {{ x.user }}  <!-- ??? how to return name instead of key -->

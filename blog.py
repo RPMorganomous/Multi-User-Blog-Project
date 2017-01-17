@@ -8,7 +8,7 @@ import jinja2
 import time
 
 from string import letters
-from models import Comment
+#from models import Comment
 from google.appengine.ext import ndb
 
 
@@ -17,6 +17,11 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
 secret = 'flatulance'
+
+# @property
+# def comment_filter(key):
+#     user_obj = Comment.query().filter(Comment.user == key) #fetch the user object by the key
+#     return user_obj.name
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -125,22 +130,29 @@ class Post(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add = True)
     last_modified = ndb.DateTimeProperty(auto_now = True)
     author = ndb.StringProperty()
-    likedby = ndb.KeyProperty(repeated=True)
+    likedby = ndb.KeyProperty(kind=User, repeated=True)
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         return render_str("post.html", p = self) #makes it easy to fill in call from front.html
 
     @property    #used to compute a variable
-    def comments(self):
+    def comments_query(self):
         print "inside comments"
         print Comment.query().filter(Comment.post == self.key)
-        return Comment.query().filter(Comment.post == self.key)
+        #return Comment.query().filter(Comment.post == self.key)
+        return Comment.query().filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
+    
+    @property
+    def filterName(key):
+        return User.get_by_id(key.id()).name
+    
+    #environment.filters['filterName'] = filterName
         
     @property
     def num_comments(self):
         return Comment.query().filter(Comment.post == self.get()).size()
-    
+        
     @property #access num_likes as if it is a variable
     def num_likes(self):
         return len(self.likedby)
@@ -151,10 +163,11 @@ class Post(ndb.Model):
         post = key.get()
         return post
         
-# class Comment(ndb.Model): - moved to models.py
-#     comment = ndb.StringProperty(required = True)
-#     post = ndb.KeyProperty() #points to data in another entity
-#     user = ndb.KeyProperty()
+class Comment(ndb.Model):
+    comment = ndb.StringProperty(required = True)
+    post = ndb.KeyProperty() #points to data in another entity
+    user = ndb.KeyProperty(kind=User)
+    last_touch_date_time = ndb.DateTimeProperty(auto_now=True)
     
 class BlogFront(BlogHandler):
     def get(self):
@@ -167,14 +180,12 @@ class BlogFront(BlogHandler):
 class PostPage(BlogHandler):
     def get(self, post_id):
         post = Post.get_by_id(post_id) # ??? how to order comments
-        #comment_query = Comment.all().order(-Comment.last_touch_date_time)
-        comment_query = Comment.query(Comment.post == post.key).order(-Comment.last_touch_date_time)
         
         if not post:
             self.error(404)
             return
 
-        self.render("permalink.html", post = post, comments = comment_query)
+        self.render("permalink.html", post = post)
       
     def post(self, post_id): #this adds a comment from leave a comment to the comment model
         
@@ -187,10 +198,12 @@ class PostPage(BlogHandler):
         
         #create an instance of Comment class and then add that to the model
         comment = Comment(comment=comment, post=post.key, user=self.user.key) # ??? why/how does self.user.key work
-        comment.put()
+        comment.put() #parent not working for delayed update
         
         
         self.redirect('/blog/%s' % str(post.key.id())) # back to permalink
+        
+        #put comment functionality into it's own handler    
 
 class UnlikePost(BlogHandler):
     def get(self, post_id):
@@ -206,18 +219,15 @@ class UnlikePost(BlogHandler):
           
             self.redirect('/blog/%s' % str(post.key.id()))
     
-#put comment functionality into it's own handler    
-    def post(self, post_id): #this is for the comment post from permalink
-        comment = self.request.get('comment') + " - user: " + self.user.name
-        
+    def post(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
-        
-        post.comments.append(comment)
+
+        post.likedby.remove(self.user.key)
         post.put()
-        
-        self.redirect('/blog/%s' % str(post.key.id())) #to permalink
       
+        self.redirect('/blog/%s' % str(post.key.id()))
+    
 class LikePost(BlogHandler): #add number of likes
     def get(self, post_id):
         print ("inside get")
@@ -232,6 +242,16 @@ class LikePost(BlogHandler): #add number of likes
             post.put()
           
             self.redirect('/blog/%s' % str(post.key.id()))
+            
+    def post(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+
+        post.likedby.append(self.user.key)
+        post.put()
+      
+        #self.redirect('/blog/%s' % str(post.key.id()))
+        self.redirect(self.request.referrer) #another way to do it
         
 class NewPost(BlogHandler):
     def get(self):
@@ -291,9 +311,9 @@ class DeleteMe(BlogHandler):
 
     def post(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
-        post = key.get()
-        key.delete()
-        #time.sleep(2)
+
+        key.delete() #does not remove comments related to this post
+        #time.sleep(2) - parent key not working
         self.redirect('/blog')
         
 ###### Unit 2 HW's
