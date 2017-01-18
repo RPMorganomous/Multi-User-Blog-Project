@@ -8,7 +8,6 @@ import jinja2
 import time
 
 from string import letters
-#from models import Comment
 from google.appengine.ext import ndb
 
 
@@ -17,11 +16,6 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
 secret = 'flatulance'
-
-# @property
-# def comment_filter(key):
-#     user_obj = Comment.query().filter(Comment.user == key) #fetch the user object by the key
-#     return user_obj.name
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -35,6 +29,16 @@ def check_secure_val(secure_val):
     if secure_val == make_secure_val(val):
         return val
 
+def filterName(id):
+    user_obj = User.by_id(id)
+    if user_obj:
+        print user_obj.name
+        return user_obj.name
+    else:
+        print "invalid obj"
+     
+jinja_env.filters['filterName'] = filterName
+        
 class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -142,13 +146,7 @@ class Post(ndb.Model):
         print Comment.query().filter(Comment.post == self.key)
         #return Comment.query().filter(Comment.post == self.key)
         return Comment.query().filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
-    
-    @property
-    def filterName(key):
-        return User.get_by_id(key.id()).name
-    
-    #environment.filters['filterName'] = filterName
-        
+
     @property
     def num_comments(self):
         return Comment.query().filter(Comment.post == self.get()).size()
