@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>DELETE COMMENT</h2>
+
+    <form method="post">
+      <label>
+        <div>Comment:</div>
+        comment_var.comment = {{comment_var.comment}}, comment_var.user = {{comment_var.user}}
+      </label>
+
+
+      <div class="error">{{error}}</div>
+
+      <input type="submit" value="delete">
+    </form>
+{% endblock %}

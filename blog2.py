@@ -343,23 +343,29 @@ class DeleteComment(BlogHandler):
         
 class EditComment(BlogHandler):
     def get(self, comment_id):
-            comment_obj = Comment.get_by_id(int(comment_id))
-            self.render("editComment.html", comment_var=comment_obj)
-            self.response.write("self.user.name: " + self.user.name + "<br>"
-                                + "date: " + str(comment_obj.last_touch_date_time) + "<br>"
-                                + "comment_obj.user: " + str(comment_obj.user) + "<br>"
-                                #+ how to compare comment_obj to self.user.name?
-                                )
-            
-
-    def post(self, comment_id):
-        comment_obj = Comment.get_by_id(int(comment_id))
-        comment_txt = self.request.get("comment")
-        comment_obj.comment = comment_txt
-        comment_obj.put()
+        if not self.user:
+            self.redirect('/blog')
         
-        post_id = comment_obj.post.id()
-        self.redirect('/blog/%s' % str(post_id)) #to permalink
+        else:
+            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            post = key.get()
+        
+        if self.user.name == post.author:  #follow with else etc. add to post also
+            self.render("editme.html", p=post)
+
+    def post(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        
+        subject = self.request.get("subject")
+        content = self.request.get("content")
+        
+        post.subject = subject
+        post.content = content
+        
+        post.put()
+        
+        self.redirect('/blog/%s' % str(post.key.id())) #to permalink
         
 ###### Unit 2 HW's
 class Rot13(BlogHandler):

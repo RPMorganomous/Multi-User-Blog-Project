@@ -49,10 +49,26 @@
       
       {% for x in post.comments_query %} <!-- returns objects -->
       <br>
-      {{ x.comment }} - USER: 
+      {{ x.comment }} - USER:
       {{ x.user.id() | filterName }}  
+        <br>
+        
+  		{% if user.name == (x.user.id() | filterName) %}
+  		
+			You can edit or delete your post
+			
+			<a href="/blog/editcomment/{{x.key.id()}}">edit</a>
+    		<a href="/blog/deletecomment/{{x.key.id()}}">delete</a>
+    		<br>
+    		Comment ID: {{ x.key.id() }} 
+    
+    	{% else %}      
       
-      <!-- add links for edit/delete if belong to user -->
+			You can not edit or delete someone else's post
+      
+      	{% endif %}
+      
+
       <br> <!-- query comment model for all comments where user is x -->
       
       {% endfor %}
