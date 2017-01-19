@@ -47,29 +47,24 @@
       </form>
       {% endif %}
       
-      {% for x in post.comments_query %} <!-- returns objects -->
+      {% for each_comment in post.comments_query %} <!-- returns objects -->
       <br>
-      {{ x.comment }} - USER:
-      {{ x.user.id() | filterName }}  
+      {{ each_comment.comment }} - USER:
+      {{ each_comment.user.id() | filterName }}  
         <br>
         
-  		{% if user.name == (x.user.id() | filterName) %}
+  		{% if user.name == (each_comment.user.id() | filterName) %}
   		
-			You can edit or delete your post
-			
-			<a href="/blog/editcomment/{{x.key.id()}}">edit</a>
-    		<a href="/blog/deletecomment/{{x.key.id()}}">delete</a>
+			<a href="/blog/editcomment/{{each_comment.key.id()}}">edit</a>
+    		<a href="/blog/deletecomment/{{each_comment.key.id()}}">delete</a>
     		<br>
-    		Comment ID: {{ x.key.id() }} 
-    
-    	{% else %}      
-      
-			You can not edit or delete someone else's post
-      
+    		{% if debugging %}
+    		Comment ID: {{ each_comment.key.id() }}
+    		{% endif %} 
+       	{% else %}      
       	{% endif %}
-      
 
-      <br> <!-- query comment model for all comments where user is x -->
+       <!-- query comment model for all comments where user is each_comment -->
       
       {% endfor %}
     

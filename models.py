@@ -1,5 +1,6 @@
 from google.appengine.ext import ndb
-from utils import 
+#from blog import BlogHandler
+#from utils import users_key
 
 class Comment(ndb.Model):
     comment = ndb.StringProperty(required = True)
@@ -17,7 +18,7 @@ class Post(ndb.Model):
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
-        return render_str("post.html", p = self) #makes it easy to fill in call from front.html
+        return BlogHandler.render_str("post.html", p = self) #makes it easy to fill in call from front.html
 
     @property    #used to compute a variable
     def comments_query(self):

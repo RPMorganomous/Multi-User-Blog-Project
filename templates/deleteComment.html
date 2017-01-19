@@ -6,12 +6,16 @@
     <form method="post">
       <label>
         <div>Comment:</div>
+        
+        {{ comment_var.comment }}
+        {% if debugging %}
         comment_var.comment = {{comment_var.comment}}, comment_var.user = {{comment_var.user}}
+        {% endif %}
       </label>
 
 
       <div class="error">{{error}}</div>
 
-      <input type="submit" value="delete">
+      <input type="submit" value="DELETE">
     </form>
 {% endblock %}

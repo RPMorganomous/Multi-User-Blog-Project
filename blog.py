@@ -17,6 +17,7 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
 secret = 'flatulance'
+debugging = True
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -124,7 +125,7 @@ class User(ndb.Model):
 
 ##### blog stuff
 
-PARENT_KEY = ndb.Key("blogs", "default")
+PARENT_KEY = ndb.Key('blogs', 'default')
 
 def blog_key(name = 'default'):
     return ndb.Key('blogs', name)
@@ -330,13 +331,13 @@ class DeleteComment(BlogHandler):
             self.render("deleteComment.html", comment_var=None, error=error)
 
     def post(self, comment_id):
-        key = ndb.Key('Comment', int(comment_id), parent=blog_key())
+        key = ndb.Key('Comment', int(comment_id))
         comment_obj = key.get()
         post_id = comment_obj.post.id()
         key.delete()
         self.redirect('/blog/%s' % str(post_id)) #to permalink
 #         key = ndb.Key('Comment', int(post_id), parent=blog_key())
-#         #comment_obj = Comment.get_by_id(comment_id)
+#         comment_obj = Comment.get_by_id(comment_id)
 #         comment_obj.key.delete() 
     
         #time.sleep(2) - parent key not working
@@ -345,13 +346,18 @@ class EditComment(BlogHandler):
     def get(self, comment_id):
             comment_obj = Comment.get_by_id(int(comment_id))
             self.render("editComment.html", comment_var=comment_obj)
-            self.response.write("self.user.name: " + self.user.name + "<br>"
+            debugging = True
+            if debugging:
+                self.response.write("self.user.name: " + self.user.name + "<br>"
                                 + "date: " + str(comment_obj.last_touch_date_time) + "<br>"
+                                + "comment_id: " + comment_id + "<br>"
                                 + "comment_obj.user: " + str(comment_obj.user) + "<br>"
+                                + "comment_obj.post.id(): " + str(comment_obj.post.id()) + "<br>"
                                 #+ how to compare comment_obj to self.user.name?
                                 )
-            
-
+            else:
+                self.response.write("")
+                
     def post(self, comment_id):
         comment_obj = Comment.get_by_id(int(comment_id))
         comment_txt = self.request.get("comment")
