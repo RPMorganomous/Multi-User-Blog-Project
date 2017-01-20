@@ -180,7 +180,6 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
     def get(self, post_id):
-
         post = Post.get_by_id(post_id) 
         
         if not post:
@@ -192,103 +191,81 @@ class PostPage(BlogHandler):
 class NewComment(BlogHandler): #this adds a comment from leave a comment to the comment model
     def post(self, post_id): #get the comment from the form
         comment = self.request.get('comment')
-        if not self.user:
-            self.redirect('/login')
-        
-        else:
-            if comment:
 
-                #get the post key for the blog post
-                key = ndb.Key('Post', int(post_id), parent=blog_key())
-                post = key.get()
-                
-                #create an instance of Comment class and then add that to the model
-                comment = Comment(comment=comment, post=post.key, user=self.user.key, parent = blog_key()) 
-                comment.put()
-                            
-                self.redirect('/blog/%s' % str(post.key.id())) # back to permalink
-                
-            else:
-                post = Post.get_by_id(post_id)
-                error = "Say something, please!"
-                self.render("permalink.html", post = post, error=error)
+        if comment:
+
+            #get the post key for the blog post
+            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            post = key.get()
+            
+            #create an instance of Comment class and then add that to the model
+            comment = Comment(comment=comment, post=post.key, user=self.user.key, parent = blog_key()) 
+            comment.put()
+                        
+            self.redirect('/blog/%s' % str(post.key.id())) # back to permalink
+            
+        else:
+            post = Post.get_by_id(post_id)
+            error = "Say something, please!"
+            self.render("permalink.html", post = post, error=error)
 
 class UnlikePost(BlogHandler):
     def get(self, post_id):
-        if not self.user:
-            self.redirect('/login')    
-
-        else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
-            post = key.get()
-            if post:
-                post.likedby.remove(self.user.key)
-                post.put()
-          
-                self.redirect('/blog/%s' % str(post.key.id()))
-            else:
-                self.error(404)
-                return
-                
-    def post(self, post_id):
         if not self.user:
             self.redirect('/blog')    
 
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
             post = key.get()
-            if post:
-                post.likedby.remove(self.user.key)
-                post.put()
+    
+            post.likedby.remove(self.user.key)
+            post.put()
           
-                self.redirect('/blog/%s' % str(post.key.id()))
-            else:
-                self.error(404)
-                return
+            self.redirect('/blog/%s' % str(post.key.id()))
+    
+    def post(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+
+        post.likedby.remove(self.user.key)
+        post.put()
+      
+        self.redirect('/blog/%s' % str(post.key.id()))
     
 class LikePost(BlogHandler):
     def get(self, post_id):
         if not self.user:
-            self.redirect('/login')
+            self.redirect('/blog')
           
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
             post = key.get()
-            if post:
-                post.likedby.append(self.user.key)
-                post.put()
+    
+            post.likedby.append(self.user.key)
+            post.put()
           
-                self.redirect('/blog/%s' % str(post.key.id()))
-            else:
-                self.redirect('/blog')
+            self.redirect('/blog/%s' % str(post.key.id()))
             
     def post(self, post_id):
-        if not self.user:
-            self.redirect('/login')
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+
+        post.likedby.append(self.user.key)
+        post.put()
+      
+        #self.redirect('/blog/%s' % str(post.key.id())) - one way to do it
+        self.redirect(self.request.referrer) #another way to do it
         
-        else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
-            post = key.get()
-            if post:
-                post.likedby.append(self.user.key)
-                post.put()
-              
-                #self.redirect('/blog/%s' % str(post.key.id())) - one way to do it
-                self.redirect(self.request.referrer) #another way to do it
-            else:
-                self.redirect('/blog')
-                
-            
 class NewPost(BlogHandler):
     def get(self):
         if self.user:
             self.render("newpost.html")
         else:
-            self.redirect('/login')
+            self.redirect('/blog')
 
     def post(self):
         if not self.user:
-            return self.redirect('/login')
+            return self.redirect('/blog')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
@@ -306,111 +283,95 @@ class NewPost(BlogHandler):
 class EditPost(BlogHandler):
     def get(self, post_id):
         if not self.user:
-            self.redirect('/login')
+            self.redirect('/blog')
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
             post = key.get()
-            if post and self.user.name == post.author:   
+            if self.user.name == post.author:   
                 self.render("editme.html", p=post)
             else:
                 self.redirect('/blog')
 
     def post(self, post_id):
         if not self.user:
-            return self.redirect('/login')
+            return self.redirect('/blog')
         
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
-        if post and self.user.name == post.author:
-            subject = self.request.get("subject")
-            content = self.request.get("content")
+        
+        subject = self.request.get("subject")
+        content = self.request.get("content")
+        
+        if subject and content:
             
-            if subject and content:
-                
-                post.subject = subject
-                post.content = content
-            
-                post.put()
-            
-                self.redirect('/blog/%s' % str(post.key.id())) #to permalink
-    
-            else:
-                error = "subject and content, please!"
-                self.render("editme.html", p=post, subject=subject, content=content, error=error)
+            post.subject = subject
+            post.content = content
+        
+            post.put()
+        
+            self.redirect('/blog/%s' % str(post.key.id())) #to permalink
+
         else:
-            self.redirect('/blog')
+            error = "subject and content, please!"
+            self.render("editme.html", p=post, subject=subject, content=content, error=error)
+
 
 class DeletePost(BlogHandler):
     def get(self, post_id):
         if not self.user:
-            self.redirect('/login')
+            self.redirect('/blog')
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
             post = key.get()
-            if post and self.user.name == post.author:
+            if self.user.name == post.author:
                 self.render("deletepost.html", p=post)
             else:
                 self.redirect('/blog')
 
     def post(self, post_id):
-        if not self.user:
-            self.redirect('/login')
-        else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
-            post = key.get()
-            if post and self.user.name == post.author:
-                for each_comment in post.comments_query: #remove all associated comments
-                    each_comment.key.delete()
-                    
-                key.delete()
-                #time.sleep(2) - parent key not working
-                self.redirect('/blog')
-            else:
-                self.redirect('/blog')
-                
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        
+        for each_comment in post.comments_query: #remove all associated comments
+            each_comment.key.delete()
+            
+        key.delete()
+        #time.sleep(2) - parent key not working
+        self.redirect('/blog')
+
 class DeleteComment(BlogHandler):
     def get(self, comment_id):
-        if not self.user:
-            self.redirect('/login')
-        else:
-            comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
-            comment_author = comment_obj.user.id() #how to check user name against comment author using name ie: rick?
-            #comment_author_name = comment_obj.user.get().name # other way around for example sake
-            print comment_author
-            print self.user.name
-            # print self.user.key.id() # =5593215650496512 keep for future reference
-            if comment_obj:
-                if self.user.key.id() == comment_author: #try by name ie: rick... AND...
-                    self.render("deleteComment.html", comment_var=comment_obj)
-                else:
-                    self.redirect('/blog')
+        comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
+        comment_author = comment_obj.user.id() #how to check user name against comment author using name ie: rick?
+        #comment_author_name = comment_obj.user.get().name # other way around for example sake
+        print comment_author
+        print self.user.name
+        print self.user.key.id() # =5593215650496512
+        if comment_obj:
+            if self.user.key.id() == comment_author: #try by name ie: rick... AND...
+                self.render("deleteComment.html", comment_var=comment_obj)
             else:
-                error = "no comment"
-                self.render("deleteComment.html", comment_var=None, error=error)
-    
-                #comment_obj = Comment.get_by_id(int(comment_id))   #equivalent to the following two lines:
-                                                                    #key = ndb.Key('Comment', int(comment_id))
-                                                                    #comment_obj = key.get()
-                                                                    #keeping for example
+                self.redirect('/blog')
+        else:
+            error = "no comment"
+            self.render("deleteComment.html", comment_var=None, error=error)
+
+            #comment_obj = Comment.get_by_id(int(comment_id))   #equivalent to the following two lines:
+                                                                #key = ndb.Key('Comment', int(comment_id))
+                                                                #comment_obj = key.get()
+                                                                #keeping for example
 
     def post(self, comment_id):
-        if not self.user:
-            self.redirect('/login')
-        else:
-            comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
-            comment_author = comment_obj.user.id()
-            if comment_obj and self.user.key.id() == comment_author:                
-                post_id = comment_obj.post.id()
-                comment_obj.key.delete()
-                        #time.sleep(2) - use this only when parent key not working
-                self.redirect('/blog/%s' % str(post_id)) #to permalink
-            else:
-                self.redirect('blog')
+        comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
+        post_id = comment_obj.post.id()
+        comment_obj.key.delete()
+                #time.sleep(2) - use this only when parent key not working
+        self.redirect('/blog/%s' % str(post_id)) #to permalink
         
 class EditComment(BlogHandler):
     def get(self, comment_id):
         if not self.user:
-            self.redirect('/login')
+            self.redirect('/blog')
         else:   
             comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
             comment_author = comment_obj.user.id()
@@ -433,20 +394,16 @@ class EditComment(BlogHandler):
                                 )
                 
     def post(self, comment_id):
-        if not self.user:
-            self.redirect('/login')
+        comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
+        comment_txt = self.request.get("comment")
+        if comment_txt:
+            comment_obj.comment = comment_txt
+            comment_obj.put()
+        
+            post_id = comment_obj.post.id()
+            self.redirect('/blog/%s' % str(post_id)) #to permalink
         else:
-            comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
-            comment_author = comment_obj.user.id()
-            comment_txt = self.request.get("comment")
-            if comment_txt and self.user.key.id() == comment_author:
-                comment_obj.comment = comment_txt
-                comment_obj.put()
-            
-                post_id = comment_obj.post.id()
-                self.redirect('/blog/%s' % str(post_id)) #to permalink
-            else:
-                self.redirect('/blog')
+            self.redirect('/blog')
         
 ###### Unit 2 HW's - keeping this for reference on future projects
 class Rot13(BlogHandler):
