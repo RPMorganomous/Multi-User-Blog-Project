@@ -21,6 +21,7 @@ Checkout the [live](https://basicblog-153422.appspot.com/blog) version of this p
 - [Google App Engine](https://cloud.google.com/appengine/docs)
 - [Python 2.7](https://www.python.org/doc/)
 - [HTML/CSS](https://google.github.io/styleguide/htmlcssguide.xml)
+- [jinja2](http://jinja.pocoo.org/)
 - [GitHub](https://github.com/)
 
 ### Project specifications
