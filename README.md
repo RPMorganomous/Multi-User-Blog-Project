@@ -1,4 +1,4 @@
-Multi-User Blog
+Rick's Blog
 ==============
 
 Instructions
@@ -9,7 +9,7 @@ Instructions
  - Comments are ordered and can be edited/deleted by their author.
  - Deleting a post deletes all associate comments.
 
-# Multi-User Blog
+## Multi-User Blog
 
 The goal of this project is to create a simple multi-user blog. 
 
@@ -19,8 +19,9 @@ Checkout the [live](https://basicblog-153422.appspot.com/blog) version of this p
 
 ### Frameworks/technologies used
 - [Google App Engine](https://cloud.google.com/appengine/docs)
-- [Python](https://wtforms.readthedocs.io/en/latest/)
-- [HTML/CSS](https://pypi.python.org/pypi/pycrypto)
+- [Python 2.7](https://www.python.org/doc/)
+- [HTML/CSS](https://google.github.io/styleguide/htmlcssguide.xml)
+- [GitHub](https://github.com/)
 
 ### Project specifications
 
