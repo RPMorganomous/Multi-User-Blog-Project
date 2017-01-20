@@ -8,7 +8,7 @@
   
     <br>
     <a href="/blog/editpost/{{post.key.id()}}">edit</a>
-    <a href="/blog/deleteme/{{post.key.id()}}">delete</a>
+    <a href="/blog/deletepost/{{post.key.id()}}">delete</a>
 
     <br>
     
@@ -41,13 +41,15 @@
 
       {% if user %}
       </p>
-      <form method="post">
+      <form action="/blog/newcomment/{{post.key.id()}}" method="post">
         <textarea style="width:300px; height:150px;" name="comment"></textarea>
         <input type="submit" value="Leave A Comment">
       </form>
       {% endif %}
       
-      {% for each_comment in post.comments_query %} <!-- returns objects -->
+      <!-- return objects from @property comments_query -->      
+      {% for each_comment in post.comments_query %} 
+
       <br>
       {{ each_comment.comment }} - USER:
       {{ each_comment.user.id() | filterName }}  

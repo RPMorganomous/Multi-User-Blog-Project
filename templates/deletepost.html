@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>DELETE post</h2>
+
+    <form method="post">
+      <label>
+        <div>subject:</div>
+        {{p.subject}}
+      </label>
+
+      <label>
+        <div>blog:</div>
+        {{p.content}}
+      </label>
+
+      <div class="error">{{error}}</div>
+
+      <input type="submit" value="DELETE">
+    </form>
+
+     <!-- return objects from @property comments_query --> 
+     <br>
+     COMMENTS TO BE DELETED:
+     <br>
+<ul>
+      {% for each_comment in p.comments_query %} 
+<li>
+      {{ each_comment.comment }} - USER:
+      {{ each_comment.user.id() | filterName }}  
+</li>
+     <br>
+      {% endfor %}
+</ul>
+    
+{% endblock %}

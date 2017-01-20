@@ -16,6 +16,13 @@ indexes:
   - name: last_touch_date_time
     direction: desc
 
+- kind: Comment
+  ancestor: yes
+  properties:
+  - name: post
+  - name: last_touch_date_time
+    direction: desc
+
 - kind: Post
   ancestor: yes
   properties:

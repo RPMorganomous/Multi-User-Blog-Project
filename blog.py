@@ -10,6 +10,7 @@ import time
 from string import letters
 #from models import Comment, Post, User
 from google.appengine.ext import ndb
+from blog2 import blog_key
 
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -31,7 +32,7 @@ def check_secure_val(secure_val):
     if secure_val == make_secure_val(val):
         return val
 
-def filterName(id):
+def filterName(id): # used in permalink.html to convert user id to user name
     user_obj = User.by_id(id)
     if user_obj:
         print user_obj.name
@@ -54,6 +55,8 @@ class BlogHandler(webapp2.RequestHandler):
 
     def set_secure_cookie(self, name, val):
         cookie_val = make_secure_val(val)
+        print cookie_val
+        print name
         self.response.headers.add_header(
             'Set-Cookie',
             '%s=%s; Path=/' % (name, cookie_val))
@@ -63,6 +66,7 @@ class BlogHandler(webapp2.RequestHandler):
         return cookie_val and check_secure_val(cookie_val)
 
     def login(self, user):
+        print user
         self.set_secure_cookie('user_id', str(user.key.id()))
 
     def logout(self):
@@ -93,7 +97,7 @@ def valid_pw(name, password, h):
     return h == make_pw_hash(name, password, salt)
 
 def users_key(group = 'default'):
-    return ndb.Key('users', group)
+    return ndb.Key('blogs', group)
 
 class User(ndb.Model):
     name = ndb.StringProperty(required = True)
@@ -145,10 +149,8 @@ class Post(ndb.Model):
     @property    #used to compute a variable
     def comments_query(self):
         print "inside comments"
-        print Comment.query().filter(Comment.post == self.key)
-        print Comment.query().filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
-        #return Comment.query().filter(Comment.post == self.key)
-        return Comment.query().filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
+
+        return Comment.query(ancestor=blog_key()).filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
 
     @property
     def num_comments(self):
@@ -160,9 +162,12 @@ class Post(ndb.Model):
         
     @classmethod
     def get_by_id(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = ndb.Key('Post', int(post_id), parent = blog_key())
         post = key.get()
         return post
+
+def comment_key(name = 'default'):
+    return ndb.Key('comments', name)
           
 class Comment(ndb.Model):
     comment = ndb.StringProperty(required = True)
@@ -172,7 +177,7 @@ class Comment(ndb.Model):
     
 class BlogFront(BlogHandler):
     def get(self):
-        posts = Post.query().order(-Post.created) #- new school way
+        posts = Post.query(ancestor=blog_key()).order(-Post.created) #- new school way
         self.render('front.html', posts = posts)
         
     def post(self):
@@ -180,17 +185,16 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
     def get(self, post_id):
-        post = Post.get_by_id(post_id) # ??? how to order comments
+        post = Post.get_by_id(post_id) 
         
         if not post:
             self.error(404)
             return
 
         self.render("permalink.html", post = post)
-      
-    def post(self, post_id): #this adds a comment from leave a comment to the comment model
-        
-        #get the comment from the form
+
+class NewComment(BlogHandler): #this adds a comment from leave a comment to the comment model
+    def post(self, post_id): #get the comment from the form
         comment = self.request.get('comment') #+ " - user: " + self.user.name
 
         #get the post key for the blog post
@@ -198,13 +202,12 @@ class PostPage(BlogHandler):
         post = key.get()
         
         #create an instance of Comment class and then add that to the model
-        comment = Comment(comment=comment, post=post.key, user=self.user.key) # ??? why/how does self.user.key work
+        comment = Comment(comment=comment, post=post.key, user=self.user.key, parent = blog_key()) # ??? why/how does self.user.key work
         comment.put() #parent not working for delayed update
         
         
         self.redirect('/blog/%s' % str(post.key.id())) # back to permalink
-        
-        #put comment functionality into it's own handler    
+        #put comment functionality into it's own handler   
 
 class UnlikePost(BlogHandler):
     def get(self, post_id):
@@ -272,7 +275,9 @@ class NewPost(BlogHandler):
         if subject and content:
             p = Post(parent = blog_key(), subject = subject, content = content, author = user)
             p.put()
-            self.redirect('/blog/%s' % str(p.key.id())) #to permalink
+            #self.redirect('/blog/%s' % str(p.key.id())) #to permalink
+            self.redirect('/blog')
+            
         else:
             error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
@@ -281,93 +286,124 @@ class EditPost(BlogHandler):
     def get(self, post_id):
         if not self.user:
             self.redirect('/blog')
-        
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
             post = key.get()
-        
-        if self.user.name == post.author:  #follow with else etc. add to post also
-            self.render("editme.html", p=post)
+            if self.user.name == post.author:   
+                self.render("editme.html", p=post)
+            else:
+                self.redirect('/blog')
 
     def post(self, post_id):
+        if not self.user:
+            return self.redirect('/blog')
+        
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
         
         subject = self.request.get("subject")
         content = self.request.get("content")
         
-        post.subject = subject
-        post.content = content
+        if subject and content:
+            
+            post.subject = subject
+            post.content = content
         
-        post.put()
+            post.put()
         
-        self.redirect('/blog/%s' % str(post.key.id())) #to permalink
+            self.redirect('/blog/%s' % str(post.key.id())) #to permalink
 
-class DeleteMe(BlogHandler):
+        else:
+            error = "subject and content, please!"
+            self.render("editme.html", p=post, subject=subject, content=content, error=error)
+
+
+class DeletePost(BlogHandler):
     def get(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
-
-        self.render("deleteme.html", p=post)
+        self.render("deletepost.html", p=post)
 
     def post(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
-
+        post = key.get()
+        
+        for each_comment in post.comments_query: #but is there a better way to delete all results?
+            each_comment.key.delete() #one small step for a man... one giant leap for mankind
+            
         key.delete() #does not remove comments related to this post
         #time.sleep(2) - parent key not working
         self.redirect('/blog')
 
 class DeleteComment(BlogHandler):
     def get(self, comment_id):
-        comment_obj = Comment.get_by_id(int(comment_id))
-        #key = ndb.Key('Comment', int(comment_id))
-        #comment_obj = key.get()
-        print comment_obj
+        comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
+        comment_author = comment_obj.user.id() #how to check user name against comment author using name ie: rick?
+        comment_auther_name = comment_obj.user.get().name # other way arounds
+        print comment_author
+        print self.user.name
+        print self.user.key.id() # =5593215650496512
         if comment_obj:
-            print "comment"
-            self.render("deleteComment.html", comment_var=comment_obj)
+            if self.user.key.id() == comment_author: #try by name ie: rick... AND...
+                self.render("deleteComment.html", comment_var=comment_obj)
+            else:
+                self.redirect('/blog')
         else:
             error = "no comment"
             self.render("deleteComment.html", comment_var=None, error=error)
 
+            #comment_obj = Comment.get_by_id(int(comment_id))    #equivalent to the following two lines:
+                                                            #key = ndb.Key('Comment', int(comment_id))
+                                                            #comment_obj = key.get()
+
     def post(self, comment_id):
-        key = ndb.Key('Comment', int(comment_id))
-        comment_obj = key.get()
+        comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
         post_id = comment_obj.post.id()
-        key.delete()
+        comment_obj.key.delete()
+                #time.sleep(2) - only when parent key not working
         self.redirect('/blog/%s' % str(post_id)) #to permalink
-#         key = ndb.Key('Comment', int(post_id), parent=blog_key())
-#         comment_obj = Comment.get_by_id(comment_id)
-#         comment_obj.key.delete() 
-    
-        #time.sleep(2) - parent key not working
         
 class EditComment(BlogHandler):
     def get(self, comment_id):
-            comment_obj = Comment.get_by_id(int(comment_id))
-            self.render("editComment.html", comment_var=comment_obj)
-            debugging = True
+        if not self.user:
+            self.redirect('/blog')
+        else:   
+            comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
+            comment_author = comment_obj.user.id()
+            if comment_obj:
+                if self.user.key.id() == comment_author:
+                    self.render("editComment.html", comment_var=comment_obj)
+                else:
+                    self.redirect('/blog')
+            else:
+                error = "no comment"
+                self.render("editComment.html", comment_var=None, error=error)
+                
             if debugging:
                 self.response.write("self.user.name: " + self.user.name + "<br>"
                                 + "date: " + str(comment_obj.last_touch_date_time) + "<br>"
                                 + "comment_id: " + comment_id + "<br>"
-                                + "comment_obj.user: " + str(comment_obj.user) + "<br>"
+                                + "comment_obj.user.id(): " + str(comment_obj.user.id()) + "<br>"
+                                + "comment_obj.user.get().name" + comment_obj.user.get().name
                                 + "comment_obj.post.id(): " + str(comment_obj.post.id()) + "<br>"
-                                #+ how to compare comment_obj to self.user.name?
+                                #+ how to compare comment_obj to self.user.name to verify access?
                                 )
             else:
                 self.response.write("")
                 
     def post(self, comment_id):
-        comment_obj = Comment.get_by_id(int(comment_id))
+        comment_obj = Comment.get_by_id(int(comment_id), parent=blog_key())
         comment_txt = self.request.get("comment")
-        comment_obj.comment = comment_txt
-        comment_obj.put()
+        if comment_txt:
+            comment_obj.comment = comment_txt
+            comment_obj.put()
         
-        post_id = comment_obj.post.id()
-        self.redirect('/blog/%s' % str(post_id)) #to permalink
+            post_id = comment_obj.post.id()
+            self.redirect('/blog/%s' % str(post_id)) #to permalink
+        else:
+            self.redirect('/blog')
         
-###### Unit 2 HW's
+###### Unit 2 HW's - keeping this for reference on future projects
 class Rot13(BlogHandler):
     def get(self):
         self.render('rot13-form.html')
@@ -498,8 +534,9 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/login', Login),
                                ('/logout', Logout),
                                ('/unit3/welcome', Unit3Welcome),
-                               ('/blog/deleteme/([0-9]+)', DeleteMe),
+                               ('/blog/deletepost/([0-9]+)', DeletePost),
                                ('/blog/deletecomment/([0-9]+)', DeleteComment),
-                               ('/blog/editcomment/([0-9]+)', EditComment)
+                               ('/blog/editcomment/([0-9]+)', EditComment),
+                               ('/blog/newcomment/([0-9]+)', NewComment)
                                ],
                               debug=True)

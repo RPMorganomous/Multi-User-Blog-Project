@@ -17,7 +17,7 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
 secret = 'flatulance'
-debugging = True
+debugging = False
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -31,7 +31,7 @@ def check_secure_val(secure_val):
     if secure_val == make_secure_val(val):
         return val
 
-def filterName(id):
+def filterName(id): # used in permalink.html to convert user id to user name
     user_obj = User.by_id(id)
     if user_obj:
         print user_obj.name
@@ -147,7 +147,7 @@ class Post(ndb.Model):
         print "inside comments"
         print Comment.query().filter(Comment.post == self.key)
         print Comment.query().filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
-        #return Comment.query().filter(Comment.post == self.key)
+
         return Comment.query().filter(Comment.post == self.key).order(-Comment.last_touch_date_time)
 
     @property
@@ -163,6 +163,9 @@ class Post(ndb.Model):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
         return post
+
+def comment_key(name = 'default'):
+    return ndb.Key('comments', name)
           
 class Comment(ndb.Model):
     comment = ndb.StringProperty(required = True)
@@ -180,7 +183,7 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
     def get(self, post_id):
-        post = Post.get_by_id(post_id) # ??? how to order comments
+        post = Post.get_by_id(post_id) 
         
         if not post:
             self.error(404)
@@ -288,6 +291,9 @@ class EditPost(BlogHandler):
         
         if self.user.name == post.author:  #follow with else etc. add to post also
             self.render("editme.html", p=post)
+        else:
+            msg = "Login to edit this post"
+            self.render('login-form.html', error = msg)
 
     def post(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -307,21 +313,24 @@ class DeletePost(BlogHandler):
     def get(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
-
-        self.render("deleteme.html", p=post)
+        self.render("deletepost.html", p=post)
 
     def post(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
-#insert query or filter to find and delete all comments with str(comment_obj.post.id()) = post_id
+        post = key.get()
+        
+        for each_comment in post.comments_query: #but is there a better way to delete all results?
+            each_comment.key.delete() #one small step for a man... one giant leap for mankind
+            
         key.delete() #does not remove comments related to this post
         #time.sleep(2) - parent key not working
         self.redirect('/blog')
 
 class DeleteComment(BlogHandler):
     def get(self, comment_id):
-        comment_obj = Comment.get_by_id(int(comment_id))
-        #key = ndb.Key('Comment', int(comment_id))
-        #comment_obj = key.get()
+        comment_obj = Comment.get_by_id(int(comment_id))    #equivalent to the following two lines:
+                                                            #key = ndb.Key('Comment', int(comment_id))
+                                                            #comment_obj = key.get()
         print comment_obj
         if comment_obj:
             print "comment"
@@ -331,29 +340,25 @@ class DeleteComment(BlogHandler):
             self.render("deleteComment.html", comment_var=None, error=error)
 
     def post(self, comment_id):
-        key = ndb.Key('Comment', int(comment_id))
+        key = ndb.Key('Comment', int(comment_id)) # old way but without parent key
         comment_obj = key.get()
         post_id = comment_obj.post.id()
         key.delete()
+                #time.sleep(2) - parent key not working
         self.redirect('/blog/%s' % str(post_id)) #to permalink
-#         key = ndb.Key('Comment', int(post_id), parent=blog_key())
-#         comment_obj = Comment.get_by_id(comment_id)
-#         comment_obj.key.delete() 
-    
-        #time.sleep(2) - parent key not working
         
 class EditComment(BlogHandler):
     def get(self, comment_id):
             comment_obj = Comment.get_by_id(int(comment_id))
             self.render("editComment.html", comment_var=comment_obj)
-            debugging = True
+            
             if debugging:
                 self.response.write("self.user.name: " + self.user.name + "<br>"
                                 + "date: " + str(comment_obj.last_touch_date_time) + "<br>"
                                 + "comment_id: " + comment_id + "<br>"
                                 + "comment_obj.user: " + str(comment_obj.user) + "<br>"
                                 + "comment_obj.post.id(): " + str(comment_obj.post.id()) + "<br>"
-                                #+ how to compare comment_obj to self.user.name?
+                                #+ how to compare comment_obj to self.user.name to verify access?
                                 )
             else:
                 self.response.write("")
@@ -367,7 +372,7 @@ class EditComment(BlogHandler):
         post_id = comment_obj.post.id()
         self.redirect('/blog/%s' % str(post_id)) #to permalink
         
-###### Unit 2 HW's
+###### Unit 2 HW's - keeping this for reference on future projects
 class Rot13(BlogHandler):
     def get(self):
         self.render('rot13-form.html')
