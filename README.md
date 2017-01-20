@@ -1,7 +1,7 @@
 Rick's Blog
 ==============
 
-Instructions
+Usage
 --------------
 
  - Clicking the main title, "Rick's Blog" will return you to the front page of the blog with an ordered list of posts.
@@ -9,7 +9,7 @@ Instructions
  - Comments are ordered and can be edited/deleted by their author.
  - Deleting a post deletes all associate comments.
 
-## Multi-User Blog
+### Multi-User Blog
 
 The goal of this project is to create a simple multi-user blog. 
 
